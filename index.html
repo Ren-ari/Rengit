@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>서울 미세먼지 및 기온 정보</title>
+    <link href="css/LED.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@700&family=Roboto:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css">
+    <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Noto+Sans+KR:wght@300;400;700&family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="wrapper">
+        <div class="container" id="container1">
+            <div class="top"></div>
+            <div class="mid">
+                <div class="mid-picture"></div>
+            </div>
+            <div class="bottom">
+                <div class="bot-picture"></div>
+            </div>
+        </div>
+
+        <div class="container" id="container2" style="display: none;">
+            <div class="top"></div>
+            <div class="mid">
+                <div class="mid-box">
+                    <p class="pm10"></p>
+                    <p class="grade"></p>
+                </div>
+                <div class="mid-box">
+                    <p>수위</p>
+                    <b>0mm</b>
+                    <p>저위험</p>
+                </div>
+                <div class="mid-box">
+                    <p class="temperature"></p>
+                </div>
+            </div>
+            <div class="bottom">
+                <div class="bot-picture"></div>
+            </div>
+        </div>
+
+        <div class="container" id="container3" style="display: none;">
+          <div class="top"></div>
+          <div class="mid">
+              <video autoplay muted loop class="video">
+                  <source src="video/asdf.mp4" type="video/mp4">
+              </video>
+          </div>
+          <div class="bottom">
+            <div class="bot-picture"></div>
+          </div>
+      </div>
+
+        <div class="weather-box">
+            <h1>서울시 구 선택</h1>
+            <select id="districtSelect">
+                <option value="">선택</option>
+                <option value="강남구">강남구</option>
+                <option value="강동구">강동구</option>
+                <option value="강북구">강북구</option>
+                <option value="강서구">강서구</option>
+                <option value="관악구">관악구</option>
+                <option value="광진구">광진구</option>
+                <option value="구로구">구로구</option>
+                <option value="금천구">금천구</option>
+                <option value="노원구">노원구</option>
+                <option value="도봉구">도봉구</option>
+                <option value="동대문구">동대문구</option>
+                <option value="동작구">동작구</option>
+                <option value="마포구">마포구</option>
+                <option value="서대문구">서대문구</option>
+                <option value="서초구">서초구</option>
+                <option value="성동구">성동구</option>
+                <option value="성북구">성북구</option>
+                <option value="송파구">송파구</option>
+                <option value="양천구">양천구</option>
+                <option value="영등포구">영등포구</option>
+                <option value="용산구">용산구</option>
+                <option value="은평구">은평구</option>
+                <option value="종로구">종로구</option>
+                <option value="중구">중구</option>
+                <option value="중랑구">중랑구</option>
+            </select>
+        </div>
+    </div>
+
+    <script>
+        const districtCoordinates = {
+            강남구: { latitude: 37.5006, longitude: 127.0508 },
+            강동구: { latitude: 37.5471, longitude: 127.1419 },
+            강북구: { latitude: 37.6405, longitude: 127.0092 },
+            강서구: { latitude: 37.5583, longitude: 126.8322 },
+            관악구: { latitude: 37.4673, longitude: 126.9483 },
+            광진구: { latitude: 37.5447, longitude: 127.0809 },
+            구로구: { latitude: 37.4986, longitude: 126.8592 },
+            금천구: { latitude: 37.4601, longitude: 126.9016 },
+            노원구: { latitude: 37.6515, longitude: 127.0732 },
+            도봉구: { latitude: 37.6665, longitude: 127.0306 },
+            동대문구: { latitude: 37.5832, longitude: 127.0551 },
+            동작구: { latitude: 37.5031, longitude: 126.9549 },
+            마포구: { latitude: 37.5666, longitude: 126.9015 },
+            서대문구: { latitude: 37.5791, longitude: 126.9368 },
+            서초구: { latitude: 37.4791, longitude: 127.0153 },
+            성동구: { latitude: 37.5505, longitude: 127.0415 },
+            성북구: { latitude: 37.5982, longitude: 127.0216 },
+            송파구: { latitude: 37.5076, longitude: 127.1168 },
+            양천구: { latitude: 37.5228, longitude: 126.8544 },
+            영등포구: { latitude: 37.5174, longitude: 126.9081 },
+            용산구: { latitude: 37.5326, longitude: 126.9809 },
+            은평구: { latitude: 37.6164, longitude: 126.9289 },
+            종로구: { latitude: 37.5803, longitude: 126.9831 },
+            중구: { latitude: 37.5637, longitude: 126.9975 },
+            중랑구: { latitude: 37.5980, longitude: 127.0927 }
+        };
+
+        const pmSection = document.querySelector('.pm10');
+        const tempSection = document.querySelector('.temperature');
+        const API_KEY = '5eac919650d7cf8b33e02a273b7abdc6';
+
+        // Debounce 함수
+        let debounceTimer;
+        function debounce(func, delay) {
+            return function (...args) {
+                clearTimeout(debounceTimer);
+                debounceTimer = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        // API 호출
+        async function fetchWeatherAndPM10(lat, lon) {
+            const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=kr`;
+            const pm10Url = `https://api.openweathermap.org/data/2.5/air_pollution?lat=${lat}&lon=${lon}&appid=${API_KEY}`;
+
+            try {
+                const [weatherResponse, pm10Response] = await Promise.all([
+                    fetch(weatherUrl),
+                    fetch(pm10Url)
+                ]);
+
+                if (!weatherResponse.ok || !pm10Response.ok) {
+                    throw new Error('API 요청 실패');
+                }
+
+                const weatherData = await weatherResponse.json();
+                const pm10Data = await pm10Response.json();
+
+                // UI 업데이트
+                const temperature = weatherData.main.temp;
+                const pm10 = pm10Data.list[0].components.pm10;
+
+                // 색상 설정
+                const pm10Color = pm10 <= 30 ? 'lightgreen' : pm10 <= 80 ? 'yellow' : pm10 <=150? 'orange' : 'lightcoral';
+                const tempColor = temperature > 25 ? 'lightcoral' : temperature > 10 ? 'orange' : 'lightblue';
+
+                tempSection.innerHTML = `기온<br><b style="color:${tempColor};">${temperature}°C</b>`;
+                pmSection.innerHTML = `미세먼지<br><b style="color:${pm10Color};">${pm10}<p>µg/m³</p></b>`;
+
+                // 미세먼지 등급 표시
+                let grade;
+                if (pm10 <= 30) {
+                    grade = "좋음";
+                } else if (pm10 <= 80) {
+                    grade = "보통";
+                } else if (pm10 <= 150) {
+                    grade = "나쁨";
+                } else {
+                    grade = "매우 나쁨";
+                }
+                const gradeColor = grade === "좋음"?'lightgreen' : grade==="보통"?'yellow':grade==="나쁨"?'orange':'lightcoral';
+                document.querySelector('.grade').innerHTML = `등급: <b style="color:${gradeColor};">${grade}</b>`;
+            } catch (error) {
+                console.error('에러 발생:', error);
+                alert("정보를 가져오는 데 오류가 발생했습니다.");
+            }
+        }
+
+        // 선택된 구역에 따라 API 호출
+        const updateCoordinates = debounce(function () {
+            const select = document.getElementById('districtSelect');
+            const district = select.value;
+
+            if (district) {
+                const { latitude, longitude } = districtCoordinates[district];
+                fetchWeatherAndPM10(latitude, longitude);
+            }
+        }, 300);
+
+        document.getElementById('districtSelect').addEventListener('change', updateCoordinates);
+
+
+        const containers = document.querySelectorAll('.container');
+let currentIndex = 0;
+
+function showNextContainer() {
+  // 현재 컨테이너 숨기기
+  containers[currentIndex].style.display = 'none';
+  
+  // 다음 인덱스 계산 (순환)
+  currentIndex = (currentIndex + 1) % containers.length;
+  
+  // 다음 컨테이너 보이기
+  containers[currentIndex].style.display = 'block';
+}
+
+// 초기 컨테이너 보이기
+containers[currentIndex].style.display = 'block';
+
+// 2분마다 컨테이너 교체
+setInterval(showNextContainer, 1000);
+
+    </script>
+</body>
+</html>
